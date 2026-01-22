@@ -15,7 +15,7 @@ THEMES = {
 
 def dobi_koordinate(mesto, drzava):
     try:
-        geolocator = Nominatim(user_agent="city_poster_premium_v3")
+        geolocator = Nominatim(user_agent="city_poster_premium_v4")
         loc = geolocator.geocode(f"{mesto}, {drzava}")
         if loc:
             lat_dir = "N" if loc.latitude >= 0 else "S"
@@ -29,8 +29,23 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = THEMES[ime_teme]
     
-    graf = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
+    # Pridobivanje podatkov o cestah
+    G = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
+    # LOGIKA ZA DEBELINO CEST (Hierarhija)
+    # Avtoceste (motorway) bodo najdebelejše, pešpoti najtanjše
+    widths = []
+    for u, v, k, data in G.edges(data=True, keys=True):
+        h_type = data.get("highway", "unclassified")
+        if h_type in ["motorway", "trunk"]:
+            widths.append(2.5) # Avtoceste in hitre ceste
+        elif h_type in ["primary", "secondary"]:
+            widths.append(1.5) # Glavne državne ceste
+        elif h_type in ["tertiary", "residential"]:
+            widths.append(0.8) # Občinske in stanovanjske ceste
+        else:
+            widths.append(0.3) # Poti, kolesarske steze, ostalo
+
     try:
         voda = ox.features_from_address(kraj, tags={"natural": ["water", "coastline", "bay"], "water": True}, dist=razdalja)
     except:
@@ -42,7 +57,8 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     if voda is not None and not voda.empty:
         voda.plot(ax=ax, color=barve["water"], zorder=1)
     
-    ox.plot_graph(graf, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=0.7, show=False, close=False)
+    # Izris cest z uporabo naših širin (linewidth=widths)
+    ox.plot_graph(G, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=widths, show=False, close=False)
     
     ax.axis('off')
     plt.subplots_adjust(bottom=0.25)
@@ -65,14 +81,11 @@ st.title("🎨 Premium City Poster Generator")
 
 mesto = st.text_input("Vnesi ime mesta", "Piran")
 drzava = st.text_input("Vnesi državo", "Slovenia")
-
-# ZAMENJAVA SLIDERJA Z VNOSOM ŠTEVILKE
-razdalja = st.number_input("Vnesi mero zooma (v metrih)", min_value=500, max_value=20000, value=3500, step=100)
-
+razdalja = st.number_input("Vnesi mero zooma (v metrih)", min_value=500, max_value=25000, value=3500, step=100)
 izbrana_tema = st.selectbox("Izberi umetniški stil", list(THEMES.keys()))
 
 if st.button("🚀 Ustvari premium poster"):
-    with st.spinner("Ustvarjam poezijo s točnimi merami..."):
+    with st.spinner("Rišem ceste po pomembnosti..."):
         try:
             slika_buf = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
             st.image(slika_buf, use_container_width=True)
@@ -85,7 +98,7 @@ st.write("---")
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 st.markdown(f'''
     <div style="text-align: center;">
-        <p style="font-size: 18px;">Časti me s kavo za nove funkcije! ☕</p>
+        <p style="font-size: 18px;">Podpri razvoj s kavo! ☕</p>
         <a href="{paypal_url}" target="_blank" style="text-decoration: none;">
             <div style="background-color: #ffc439; color: black; padding: 14px 28px; border-radius: 30px; font-weight: bold; display: inline-block;">
                 Donate via PayPal
