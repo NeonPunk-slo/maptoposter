@@ -1,13 +1,13 @@
-import streamlit as stimport streamlit as st
+import streamlit as stimport streamlit as stimport streamlit as st
 import io
 import osmnx as ox
 import matplotlib.pyplot as plt
 from geopy.geocoders import Nominatim
 
-# 1. TEME
+# 1. TEME (Natančno po vzoru tvoje slike Pirana)
 THEMES = {
-    "Klasičen temen": {"bg": "#202124", "roads": "#FFFFFF", "water": "#3d424d", "text": "white"},
     "Morski razgled (Moder)": {"bg": "#F1F4F7", "roads": "#757575", "water": "#0077BE", "text": "#063951"},
+    "Klasičen temen": {"bg": "#202124", "roads": "#FFFFFF", "water": "#3d424d", "text": "white"},
     "Starinski papir": {"bg": "#f4f1ea", "roads": "#5b5b5b", "water": "#a5c3cf", "text": "#333333"},
     "Neon Punk": {"bg": "#000000", "roads": "#ff00ff", "water": "#00ffff", "text": "#00ffff"},
     "Minimalističen bel": {"bg": "#ffffff", "roads": "#2c3e50", "water": "#b3e5fc", "text": "#2c3e50"}
@@ -27,30 +27,30 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = THEMES[ime_teme]
     
-    # Pridobivanje cest
+    # Pridobivanje podatkov o cestah
     graf = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
-    # PRIDOBIVANJE VSE VODE (Reke + Morja + Jezera)
+    # Pridobivanje VSE vode (Morje + Reke + Jezera)
     try:
-        # "natural: water" zajame morja in jezera, "waterway" pa reke
         voda = ox.features_from_address(kraj, tags={"natural": "water", "waterway": True, "bay": True}, dist=razdalja)
     except:
         voda = None
 
+    # Visok format figure (kot na tvoji sliki Pirana)
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
-    # Risanje vseh vodnih površin
+    # Najprej narišemo vodo
     if voda is not None and not voda.empty:
         voda.plot(ax=ax, color=barve["water"], zorder=1)
     
-    # Risanje cest
+    # Nato narišemo ceste
     ox.plot_graph(graf, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=0.7, show=False, close=False)
     
     ax.axis('off')
     plt.subplots_adjust(bottom=0.2)
     
-    # NAPISI (Povečani za "pro" videz)
+    # VELIKI NAPISI (Kot na sliki piran_sea_view_1.png)
     fig.text(0.5, 0.12, mesto.upper(), fontsize=55, color=barve["text"], ha="center", fontweight="bold")
     fig.text(0.5, 0.08, drzava.upper(), fontsize=22, color=barve["text"], ha="center", alpha=0.8)
     
@@ -73,7 +73,7 @@ razdalja = st.slider("Povečava (metri)", 500, 5000, 3000)
 izbrana_tema = st.selectbox("Izberi stil", list(THEMES.keys()))
 
 if st.button("🚀 Ustvari svoj poster"):
-    with st.spinner("Pripravljam podatke o cestah in vodah..."):
+    with st.spinner("Pripravljam podatke in rišem..."):
         try:
             slika_buf = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
             st.image(slika_buf, use_container_width=True)
@@ -81,14 +81,15 @@ if st.button("🚀 Ustvari svoj poster"):
         except Exception as e:
             st.error(f"Napaka: {e}")
 
-# PAYPAL GUMB
+# --- PAYPAL GUMB (Izboljšan slovenski videz) ---
 st.write("---")
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 st.markdown(f'''
     <div style="text-align: center;">
+        <p style="font-size: 18px;">Ti je generator prihranil denar? Časti me s kavo! ☕</p>
         <a href="{paypal_url}" target="_blank" style="text-decoration: none;">
-            <div style="background-color: #ffc439; color: black; padding: 10px 20px; border-radius: 25px; font-weight: bold; display: inline-block;">
-                Podpri projekt (PayPal) ☕
+            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: inline-block; font-family: Arial;">
+                Podpri projekt (PayPal)
             </div>
         </a>
     </div>
