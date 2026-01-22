@@ -1,58 +1,58 @@
 import streamlit as st
 import io
 
-# Ker so stili v tvoji kodi definirani v poster.py, jih uvozimo previdno
+# Poskusimo uvoziti funkcijo iz tvoje obstoječe datoteke poster.py
 try:
-    from poster import create_map_poster, THEMES
-except ImportError:
-    # Če uvoz ne uspe, definiramo vsaj osnovni stil, da stran deluje
     from poster import create_map_poster
-    THEMES = {"Standard": {"water": "#DEE1E6", "land": "#F8F9FA", "roads": "#FFFFFF", "text": "#202124"}}
+except ImportError:
+    st.error("Napaka: Datoteka 'poster.py' ni bila najdena ali ne vsebuje funkcije 'create_map_poster'. Preveri GitHub.")
 
 # Naslov strani
 st.title("🎨 Generator mestnih posterjev")
 st.write("Vnesi podatke in si prenesi svoj umetniški zemljevid.")
 
-# Vnosni podatki na strani
+# Vnosni podatki
 city = st.text_input("Mesto", "Novo mesto")
 country = st.text_input("Država", "Slovenia")
 dist = st.slider("Razdalja v metrih (zoom)", 500, 5000, 2500)
-theme_name = st.selectbox("Izberi stil", list(THEMES.keys()))
+
+# Ročno definirane barve, da se izognemo napakam pri THEMES
+colors = {
+    "water": "#DEE1E6",
+    "land": "#F8F9FA",
+    "roads": "#FFFFFF",
+    "text": "#202124"
+}
 
 if st.button("🚀 Ustvari poster"):
-    colors = THEMES[theme_name]
     place = f"{city}, {country}"
-    
-    with st.spinner("Pridobivam podatke iz zemljevidov... Počakaj trenutek."):
+    with st.spinner("Pridobivam podatke... To lahko traja minuto."):
         try:
             img = create_map_poster(place, colors, dist)
-            st.image(img, caption=f"{city}, {country}", use_container_width=True)
+            st.image(img, caption=place, use_container_width=True)
             
-            # Gumb za prenos slike
+            # Priprava za prenos
             buf = io.BytesIO()
             img.save(buf, format="PNG")
-            byte_im = buf.getvalue()
             st.download_button(
                 label="Prenesi poster",
-                data=byte_im,
+                data=buf.getvalue(),
                 file_name=f"{city}_poster.png",
                 mime="image/png"
             )
         except Exception as e:
-            st.error(f"Prišlo je do napake: {e}")
+            st.error(f"Prišlo je do napake pri generiranju: {e}")
 
-# Razdelek za donacije (PayPal)
+# PayPal razdelek
 st.write("---")
 st.subheader("☕ Podpri projekt")
-st.write("Če ti je generator všeč, lahko podpreš moj trud z majhno donacijo. Vsak evro pomaga pri razvoju!")
+st.write("Če ti je generator všeč, me lahko podpreš za kavo!")
 
-# Tvoja uradna PayPal povezava iz gem20.png
+# Tvoja povezava iz gem19.png in gem20.png
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 
 st.markdown(f'''
     <a href="{paypal_url}" target="_blank">
-        <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" alt="Donate">
+        <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" alt="PayPal">
     </a>
 ''', unsafe_allow_html=True)
-
-st.caption("Hvala za tvojo podporo! 🚀")
