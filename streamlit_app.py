@@ -4,21 +4,20 @@ import osmnx as ox
 import matplotlib.pyplot as plt
 from geopy.geocoders import Nominatim
 
-# 1. TEME (Slovenskimi imeni in opisi)
+# 1. TEME (Z osveženimi barvnimi paletami za ceste)
 TEME = {
-    "Morski razgled (Moder)": {"bg": "#F1F4F7", "roads": "#757575", "water": "#0077BE", "text": "#063951"},
-    "Klasičen temen": {"bg": "#202124", "roads": "#FFFFFF", "water": "#3d424d", "text": "white"},
-    "Starinski papir": {"bg": "#f4f1ea", "roads": "#5b5b5b", "water": "#a5c3cf", "text": "#333333"},
-    "Neon Punk": {"bg": "#000000", "roads": "#ff00ff", "water": "#2d2d2d", "text": "#00ffff"},
-    "Minimalističen bel": {"bg": "#ffffff", "roads": "#2c3e50", "water": "#b3e5fc", "text": "#2c3e50"}
+    "Morski razgled (Moder)": {"bg": "#F1F4F7", "water": "#0077BE", "text": "#063951", "ac": "#2C3E50", "glavne": "#5D6D7E", "ostalo": "#ABB2B9"},
+    "Klasičen temen": {"bg": "#202124", "water": "#3d424d", "text": "white", "ac": "#FFFFFF", "glavne": "#D5D8DC", "ostalo": "#7F8C8D"},
+    "Starinski papir": {"bg": "#f4f1ea", "water": "#a5c3cf", "text": "#333333", "ac": "#1A1A1A", "glavne": "#4D4D4D", "ostalo": "#808080"},
+    "Neon Punk": {"bg": "#000000", "water": "#2d2d2d", "text": "#00ffff", "ac": "#ff00ff", "glavne": "#ff77ff", "ostalo": "#444444"},
+    "Minimalističen bel": {"bg": "#ffffff", "water": "#b3e5fc", "text": "#2c3e50", "ac": "#000000", "glavne": "#555555", "ostalo": "#AAAAAA"}
 }
 
 def dobi_koordinate(mesto, drzava):
     try:
-        geolocator = Nominatim(user_agent="city_poster_premium_slo")
+        geolocator = Nominatim(user_agent="city_poster_premium_color_v1")
         loc = geolocator.geocode(f"{mesto}, {drzava}")
         if loc:
-            # Format: 45.5285° S / 13.5684° V (Uporabimo S za Sever in V za Vzhod)
             lat_dir = "S" if loc.latitude >= 0 else "J"
             lon_dir = "V" if loc.longitude >= 0 else "Z"
             return f"{abs(loc.latitude):.4f}° {lat_dir} / {abs(loc.longitude):.4f}° {lon_dir}"
@@ -30,21 +29,27 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = TEME[ime_teme]
     
-    # Pridobivanje cest
     G = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
-    # Hierarhija cest (Debelina po pomembnosti)
-    sirine = []
+    # LOGIKA ZA BARVE IN DEBELINE CEST
+    road_colors = []
+    road_widths = []
+    
     for u, v, k, data in G.edges(data=True, keys=True):
         h_type = data.get("highway", "unclassified")
+        
         if h_type in ["motorway", "trunk"]:
-            sirine.append(2.8) # Avtoceste
+            road_colors.append(barve["ac"])    # Barva za avtoceste
+            road_widths.append(3.0)
         elif h_type in ["primary", "secondary"]:
-            sirine.append(1.6) # Glavne ceste
+            road_colors.append(barve["glavne"]) # Barva za glavne ceste
+            road_widths.append(1.8)
         elif h_type in ["tertiary", "residential"]:
-            sirine.append(0.8) # Stanovanjske ulice
+            road_colors.append(barve["ostalo"]) # Barva za občinske ceste
+            road_widths.append(0.8)
         else:
-            sirine.append(0.3) # Poti
+            road_colors.append(barve["ostalo"]) # Ostale poti
+            road_widths.append(0.4)
 
     try:
         voda = ox.features_from_address(kraj, tags={"natural": ["water", "coastline", "bay"], "water": True}, dist=razdalja)
@@ -57,12 +62,12 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     if voda is not None and not voda.empty:
         voda.plot(ax=ax, color=barve["water"], zorder=1)
     
-    ox.plot_graph(G, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=sirine, show=False, close=False)
+    # Uporaba različnih barv (edge_color=road_colors)
+    ox.plot_graph(G, ax=ax, node_size=0, edge_color=road_colors, edge_linewidth=road_widths, show=False, close=False)
     
     ax.axis('off')
     plt.subplots_adjust(bottom=0.25)
     
-    # Napisi (Ime mesta, država in koordinate)
     fig.text(0.5, 0.16, mesto.upper(), fontsize=65, color=barve["text"], ha="center", fontweight="bold")
     fig.text(0.5, 0.11, drzava.upper(), fontsize=25, color=barve["text"], ha="center", alpha=0.8)
     
@@ -77,26 +82,22 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
 
 # --- SLOVENSKI VMESNIK ---
 st.set_page_config(page_title="Mestna Poezija", layout="centered")
-
 st.markdown("<h1 style='text-align: center;'>Mestna Poezija</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #888;'>Ustvari svoj unikatni minimalistični zemljevid</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #888;'>Premium zemljevidi s pravilno hierarhijo cest</p>", unsafe_allow_html=True)
 
-st.write("")
-
-# Polja za vnos v slovenščini
 mesto = st.text_input("Ime kraja", "Piran")
 drzava = st.text_input("Država", "Slovenija")
 razdalja = st.number_input("Povečava - Zoom (v metrih)", min_value=500, max_value=25000, value=3500, step=100)
 izbrana_tema = st.selectbox("Izberi umetniški slog", list(TEME.keys()))
 
 if st.button("✨ Ustvari umetniško delo"):
-    with st.spinner("Pripravljam tvoj poster... prosim počakaj."):
+    with st.spinner("Rišem ceste in določam barve..."):
         try:
             slika_buf = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
             st.image(slika_buf, use_container_width=True)
             st.download_button(label="📥 Prenesi poster (PNG)", data=slika_buf, file_name=f"{mesto}_poezija.png", mime="image/png")
         except Exception as e:
-            st.error(f"Prišlo je do napake: {e}")
+            st.error(f"Napaka: {e}")
 
 # --- PAYPAL ---
 st.write("---")
@@ -105,7 +106,7 @@ st.markdown(f'''
     <div style="text-align: center;">
         <p style="font-size: 16px; color: #888;">Ti je rezultat všeč? Podpri razvoj aplikacije.</p>
         <a href="{paypal_url}" target="_blank" style="text-decoration: none;">
-            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 25px; font-weight: bold; display: inline-block; font-family: Arial;">
+            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 25px; font-weight: bold; display: inline-block;">
                 PayPal Donacija
             </div>
         </a>
