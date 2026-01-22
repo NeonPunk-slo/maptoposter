@@ -25,6 +25,20 @@ theme_name = st.selectbox("Izberi stil", list(THEMES.keys()))
 if st.button("🚀 Ustvari poster"):
     colors = THEMES[theme_name]
     place = f"{city}, {country}"
+st.write("---")
+st.subheader("☕ Podpri projekt")
+st.write("Če ti je generator všeč, lahko podpreš moj trud z majhno donacijo. Vsak evro pomaga pri razvoju novih stilov in vzdrževanju strani!")
+
+# Tvoja uradna PayPal povezava
+paypal_url = "https://www.paypal.me/NeonPunkSlo"
+
+st.markdown(f'''
+    <a href="{paypal_url}" target="_blank">
+        <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" alt="Donate with PayPal">
+    </a>
+''', unsafe_allow_html=True)
+
+st.caption("Hvala za tvojo podporo! 🚀")
     
     with st.spinner("Pridobivam podatke iz zemljevidov... Počakaj trenutek."):
         try:
