@@ -4,16 +4,18 @@ import osmnx as ox
 import matplotlib.pyplot as plt
 from geopy.geocoders import Nominatim
 
-# 1. TEME (Nazaj na preverjeno estetiko)
+# 1. TEME (Vse nazaj na svojem mestu)
 THEMES = {
     "Morski razgled (Moder)": {"bg": "#F1F4F7", "roads": "#757575", "water": "#0077BE", "text": "#063951"},
     "Klasičen temen": {"bg": "#202124", "roads": "#FFFFFF", "water": "#3d424d", "text": "white"},
+    "Starinski papir": {"bg": "#f4f1ea", "roads": "#5b5b5b", "water": "#a5c3cf", "text": "#333333"},
+    "Neon Punk": {"bg": "#000000", "roads": "#ff00ff", "water": "#2d2d2d", "text": "#00ffff"},
     "Minimalističen bel": {"bg": "#ffffff", "roads": "#2c3e50", "water": "#b3e5fc", "text": "#2c3e50"}
 }
 
 def dobi_koordinate(mesto, drzava):
     try:
-        geolocator = Nominatim(user_agent="city_poster_clean_2026")
+        geolocator = Nominatim(user_agent="city_poster_v2026_final")
         loc = geolocator.geocode(f"{mesto}, {drzava}")
         if loc:
             return f"{abs(loc.latitude):.4f}° N / {abs(loc.longitude):.4f}° E"
@@ -25,32 +27,27 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = THEMES[ime_teme]
     
-    # Pridobivanje podatkov o cestah
+    # Pridobivanje cest
     graf = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
-    # Pridobivanje VODE (razširjen filter, ki je prej deloval)
+    # Pridobivanje vode
     try:
         voda = ox.features_from_address(kraj, tags={"natural": ["water", "coastline", "bay"], "water": True}, dist=razdalja)
     except:
         voda = None
 
-    # Visoka figura (kot originalna poezija)
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
-    # Najprej narišemo vodo
     if voda is not None and not voda.empty:
         voda.plot(ax=ax, color=barve["water"], zorder=1)
     
-    # Nato ceste
     ox.plot_graph(graf, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=0.7, show=False, close=False)
     
     ax.axis('off')
-    
-    # Prostor za napise (brez čudnih pravokotnikov)
     plt.subplots_adjust(bottom=0.25)
     
-    # VELIKI, ČISTI NAPISI (Nazaj na piran_sea_view_1.png stil)
+    # Napisi v izbranem stilu
     fig.text(0.5, 0.15, mesto.upper(), fontsize=65, color=barve["text"], ha="center", fontweight="bold")
     fig.text(0.5, 0.10, drzava.upper(), fontsize=25, color=barve["text"], ha="center", alpha=0.8)
     
@@ -63,30 +60,30 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     plt.close(fig)
     return buf
 
-# --- VMESNIK ---
-st.set_page_config(page_title="Premium City Poster", layout="centered")
+# --- STREAMLIT ---
+st.set_page_config(page_title="Premium City Poster Generator", layout="centered")
 st.title("🎨 Premium City Poster Generator")
 
-mesto = st.text_input("Vnesi mesto", "Piran")
+mesto = st.text_input("Vnesi ime mesta", "Piran")
 drzava = st.text_input("Vnesi državo", "Slovenia")
-razdalja = st.slider("Zoom (razdalja v metrih)", 1000, 10000, 3500)
+razdalja = st.slider("Povečava (Zoom v metrih)", 1000, 10000, 3500)
 izbrana_tema = st.selectbox("Izberi umetniški stil", list(THEMES.keys()))
 
-if st.button("🚀 Generiraj Poster"):
-    with st.spinner("Ustvarjam poezijo..."):
+if st.button("🚀 Ustvari svoj poster"):
+    with st.spinner("Pripravljam poezijo..."):
         try:
             slika_buf = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
             st.image(slika_buf, use_container_width=True)
             st.download_button(label="📥 Prenesi poster", data=slika_buf, file_name=f"{mesto}.png", mime="image/png")
         except Exception as e:
-            st.error(f"Napaka: {e}")
+            st.error(f"Napaka pri generiranju: {e}")
 
-# --- TVOJ ORIGINALNI PAYPAL GUMB ---
+# --- PAYPAL GUMB ---
 st.write("---")
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 st.markdown(f'''
     <div style="text-align: center;">
-        <p style="font-size: 18px;">Ti je generator prihranil denar? Časti me s kavo! ☕</p>
+        <p style="font-size: 18px;">Časti me s kavo, če ti je poster všeč! ☕</p>
         <a href="{paypal_url}" target="_blank" style="text-decoration: none;">
             <div style="background-color: #ffc439; color: black; padding: 14px 28px; border-radius: 30px; font-weight: bold; display: inline-block; font-family: Arial;">
                 Donate (PayPal)
