@@ -1,10 +1,10 @@
-import streamlit as stimport streamlit as stimport streamlit as st
+import streamlit as st
 import io
 import osmnx as ox
 import matplotlib.pyplot as plt
 from geopy.geocoders import Nominatim
 
-# 1. TEME (Natančno po vzoru tvoje slike Pirana)
+# 1. TEME (Natančno po vzoru slike Pirana)
 THEMES = {
     "Morski razgled (Moder)": {"bg": "#F1F4F7", "roads": "#757575", "water": "#0077BE", "text": "#063951"},
     "Klasičen temen": {"bg": "#202124", "roads": "#FFFFFF", "water": "#3d424d", "text": "white"},
@@ -27,7 +27,7 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = THEMES[ime_teme]
     
-    # Pridobivanje podatkov o cestah
+    # Pridobivanje cest
     graf = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
     # Pridobivanje VSE vode (Morje + Reke + Jezera)
@@ -36,21 +36,18 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     except:
         voda = None
 
-    # Visok format figure (kot na tvoji sliki Pirana)
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
-    # Najprej narišemo vodo
     if voda is not None and not voda.empty:
         voda.plot(ax=ax, color=barve["water"], zorder=1)
     
-    # Nato narišemo ceste
     ox.plot_graph(graf, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=0.7, show=False, close=False)
     
     ax.axis('off')
     plt.subplots_adjust(bottom=0.2)
     
-    # VELIKI NAPISI (Kot na sliki piran_sea_view_1.png)
+    # VELIKI NAPISI
     fig.text(0.5, 0.12, mesto.upper(), fontsize=55, color=barve["text"], ha="center", fontweight="bold")
     fig.text(0.5, 0.08, drzava.upper(), fontsize=22, color=barve["text"], ha="center", alpha=0.8)
     
@@ -81,14 +78,14 @@ if st.button("🚀 Ustvari svoj poster"):
         except Exception as e:
             st.error(f"Napaka: {e}")
 
-# --- PAYPAL GUMB (Izboljšan slovenski videz) ---
+# --- PAYPAL GUMB ---
 st.write("---")
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 st.markdown(f'''
     <div style="text-align: center;">
-        <p style="font-size: 18px;">Ti je generator prihranil denar? Časti me s kavo! ☕</p>
+        <p style="font-size: 18px;">Podpri projekt in mi časti kavo! ☕</p>
         <a href="{paypal_url}" target="_blank" style="text-decoration: none;">
-            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: inline-block; font-family: Arial;">
+            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: inline-block;">
                 Podpri projekt (PayPal)
             </div>
         </a>
