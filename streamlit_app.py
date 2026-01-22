@@ -4,7 +4,7 @@ import osmnx as ox
 import matplotlib.pyplot as plt
 from geopy.geocoders import Nominatim
 
-# 1. TEME (Natančno po vzoru slike Pirana)
+# 1. TEME
 THEMES = {
     "Morski razgled (Moder)": {"bg": "#F1F4F7", "roads": "#757575", "water": "#0077BE", "text": "#063951"},
     "Klasičen temen": {"bg": "#202124", "roads": "#FFFFFF", "water": "#3d424d", "text": "white"},
@@ -15,10 +15,12 @@ THEMES = {
 
 def dobi_koordinate(mesto, drzava):
     try:
-        geolocator = Nominatim(user_agent="city_poster_final_2026")
+        geolocator = Nominatim(user_agent="city_poster_v2_2026")
         loc = geolocator.geocode(f"{mesto}, {drzava}")
         if loc:
-            return f"{abs(loc.latitude):.4f}° {'N' if loc.latitude >= 0 else 'S'} / {abs(loc.longitude):.4f}° {'E' if loc.longitude >= 0 else 'W'}"
+            lat = f"{abs(loc.latitude):.4f}° {'N' if loc.latitude >= 0 else 'S'}"
+            lon = f"{abs(loc.longitude):.4f}° {'E' if loc.longitude >= 0 else 'W'}"
+            return f"{lat} / {lon}"
         return ""
     except:
         return ""
@@ -27,32 +29,40 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = THEMES[ime_teme]
     
-    # Pridobivanje cest
+    # Pridobivanje podatkov
     graf = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
-    # Pridobivanje VSE vode (Morje + Reke + Jezera)
+    # RAZŠIRJENO ISKANJE VODE (Tudi morje)
     try:
-        voda = ox.features_from_address(kraj, tags={"natural": "water", "waterway": True, "bay": True}, dist=razdalja)
+        # Iščemo vse: morja, zalive, reke in jezera
+        voda = ox.features_from_address(kraj, tags={
+            "natural": ["water", "coastline"], 
+            "place": ["sea", "ocean"],
+            "waterway": True,
+            "bay": True
+        }, dist=razdalja)
     except:
         voda = None
 
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
+    # Izris vode
     if voda is not None and not voda.empty:
         voda.plot(ax=ax, color=barve["water"], zorder=1)
     
+    # Izris cest
     ox.plot_graph(graf, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=0.7, show=False, close=False)
     
     ax.axis('off')
-    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(bottom=0.25)
     
-    # VELIKI NAPISI
-    fig.text(0.5, 0.12, mesto.upper(), fontsize=55, color=barve["text"], ha="center", fontweight="bold")
-    fig.text(0.5, 0.08, drzava.upper(), fontsize=22, color=barve["text"], ha="center", alpha=0.8)
+    # NAPISI IN KOORDINATE
+    fig.text(0.5, 0.15, mesto.upper(), fontsize=55, color=barve["text"], ha="center", fontweight="bold")
+    fig.text(0.5, 0.10, drzava.upper(), fontsize=22, color=barve["text"], ha="center", alpha=0.8)
     
     koordinate = dobi_koordinate(mesto, drzava)
-    fig.text(0.5, 0.045, koordinate, fontsize=14, color=barve["text"], ha="center", alpha=0.5, family="monospace")
+    fig.text(0.5, 0.06, koordinate, fontsize=16, color=barve["text"], ha="center", alpha=0.6, family="monospace")
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor=barve["bg"], dpi=300, bbox_inches='tight', pad_inches=0.5)
@@ -66,28 +76,19 @@ st.title("🎨 Premium Generator Mestnih Posterjev")
 
 mesto = st.text_input("Ime mesta", "Piran")
 drzava = st.text_input("Država", "Slovenia")
-razdalja = st.slider("Povečava (metri)", 500, 5000, 3000)
+razdalja = st.slider("Povečava (metri)", 500, 10000, 5000)
 izbrana_tema = st.selectbox("Izberi stil", list(THEMES.keys()))
 
-if st.button("🚀 Ustvari svoj poster"):
-    with st.spinner("Pripravljam podatke in rišem..."):
+if st.button("🚀 Generiraj končno verzijo"):
+    with st.spinner("Pridobivam podatke o morju in koordinatah..."):
         try:
             slika_buf = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
             st.image(slika_buf, use_container_width=True)
             st.download_button(label="📥 Prenesi poster", data=slika_buf, file_name=f"{mesto}.png")
         except Exception as e:
-            st.error(f"Napaka: {e}")
+            st.error(f"Napaka pri generiranju: {e}")
 
-# --- PAYPAL GUMB ---
+# PayPal
 st.write("---")
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
-st.markdown(f'''
-    <div style="text-align: center;">
-        <p style="font-size: 18px;">Podpri projekt in mi časti kavo! ☕</p>
-        <a href="{paypal_url}" target="_blank" style="text-decoration: none;">
-            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: inline-block;">
-                Podpri projekt (PayPal)
-            </div>
-        </a>
-    </div>
-''', unsafe_allow_html=True)
+st.markdown(f'''<div style="text-align:center"><a href="{paypal_url}" target="_blank" style="text-decoration:none;"><div style="background-color:#ffc439;color:black;padding:12px 24px;border-radius:30px;font-weight:bold;display:inline-block;">Podpri projekt (PayPal)</div></a></div>''', unsafe_allow_html=True)
