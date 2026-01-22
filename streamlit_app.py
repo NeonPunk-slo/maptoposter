@@ -3,23 +3,22 @@ import io
 import osmnx as ox
 import matplotlib.pyplot as plt
 from geopy.geocoders import Nominatim
+from shapely.geometry import box
 
-# 1. TEME (Prazno ozadje, voda je ločen element)
+# 1. TEME (Pripravljene na kontrast kopno/morje)
 THEMES = {
-    "Morski razgled (Moder)": {"bg": "#F1F4F7", "roads": "#757575", "water": "#0077BE", "text": "#063951"},
-    "Klasičen temen": {"bg": "#202124", "roads": "#FFFFFF", "water": "#3d424d", "text": "white"},
-    "Starinski papir": {"bg": "#f4f1ea", "roads": "#5b5b5b", "water": "#a5c3cf", "text": "#333333"},
-    "Neon Punk": {"bg": "#000000", "roads": "#ff00ff", "water": "#00ffff", "text": "#00ffff"},
-    "Minimalističen bel": {"bg": "#ffffff", "roads": "#2c3e50", "water": "#e3f2fd", "text": "#2c3e50"}
+    "Morski razgled (Moder)": {"bg_sea": "#0077BE", "land": "#F1F4F7", "roads": "#757575", "text": "#063951"},
+    "Klasičen temen": {"bg_sea": "#1a1a1b", "land": "#202124", "roads": "#FFFFFF", "text": "white"},
+    "Neon Punk": {"bg_sea": "#1a0033", "land": "#000000", "roads": "#ff00ff", "text": "#00ffff"}
 }
 
 def dobi_koordinate(mesto, drzava):
     try:
-        geolocator = Nominatim(user_agent="city_poster_v3_2026")
+        geolocator = Nominatim(user_agent="city_poster_final_v5")
         loc = geolocator.geocode(f"{mesto}, {drzava}")
         if loc:
-            return f"{abs(loc.latitude):.4f}° {'N' if loc.latitude >= 0 else 'S'} / {abs(loc.longitude):.4f}° {'E' if loc.longitude >= 0 else 'W'}"
-        return "KOORDINATE NISO NAJDENE"
+            return f"{abs(loc.latitude):.4f}° N / {abs(loc.longitude):.4f}° E"
+        return ""
     except:
         return ""
 
@@ -27,60 +26,60 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = THEMES[ime_teme]
     
-    # Pridobivanje podatkov
+    # 1. Pridobivanje cest
     graf = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
-    # BOLJŠI FILTER ZA VODO (Vključuje morje in obale)
+    # 2. Pridobivanje obalne linije / kopnega
     try:
-        voda = ox.features_from_address(kraj, tags={
-            "natural": ["water", "coastline", "beach"], 
-            "place": ["sea", "ocean"],
-            "waterway": True,
-            "bay": True
-        }, dist=razdalja)
+        # Iskanje kopnega preko administrativnih meja ali obale
+        kopno = ox.features_from_address(kraj, tags={"place": "suburb", "boundary": "administrative", "landuse": ["residential", "commercial"]}, dist=razdalja)
     except:
-        voda = None
+        kopno = None
 
-    fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["bg"])
-    ax.set_facecolor(barve["bg"])
+    # Ustvarjanje figure - OZADJE JE BARVA MORJA
+    fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["bg_sea"])
+    ax.set_facecolor(barve["bg_sea"])
     
-    # Najprej narišemo vodo
-    if voda is not None and not voda.empty:
-        voda.plot(ax=ax, color=barve["water"], zorder=1)
+    # Izris kopnega (če obstaja, sicer bo ozadje ostalo modro pod cestami)
+    if kopno is not None and not kopno.empty:
+        kopno.plot(ax=ax, color=barve["land"], zorder=0)
     
-    # Nato ceste
-    ox.plot_graph(graf, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=0.8, show=False, close=False)
+    # Izris cest
+    ox.plot_graph(graf, ax=ax, node_size=0, edge_color=barve["roads"], edge_linewidth=0.7, show=False, close=False)
     
     ax.axis('off')
     
-    # FIKSEN BEL PAS SPODAJ
+    # DODAJANJE BELEGA PASU SPODAJ (Mora biti čez vse)
     plt.subplots_adjust(bottom=0.25)
+    rect = plt.Rectangle((0, 0), 1, 0.25, transform=fig.transFigure, facecolor="#F1F4F7", zorder=10)
+    fig.patches.append(rect)
     
-    # NAPISI (Z ročno nastavljenimi višinami, da ne uidejo)
-    fig.text(0.5, 0.15, mesto.upper(), fontsize=55, color=barve["text"], ha="center", fontweight="bold")
-    fig.text(0.5, 0.10, drzava.upper(), fontsize=22, color=barve["text"], ha="center", alpha=0.8)
+    # NAPISI IN KOORDINATE (Znotraj belega pasu)
+    fig.text(0.5, 0.14, mesto.upper(), fontsize=60, color=barve["text"], ha="center", fontweight="bold", zorder=11)
+    fig.text(0.5, 0.09, drzava.upper(), fontsize=25, color=barve["text"], ha="center", alpha=0.8, zorder=11)
     
     koordinate = dobi_koordinate(mesto, drzava)
-    fig.text(0.5, 0.06, koordinate, fontsize=16, color=barve["text"], ha="center", alpha=0.6, family="monospace")
+    fig.text(0.5, 0.05, koordinate, fontsize=18, color=barve["text"], ha="center", alpha=0.6, family="monospace", zorder=11)
 
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", facecolor=barve["bg"], dpi=300, bbox_inches='tight', pad_inches=0.5)
+    fig.savefig(buf, format="png", facecolor=barve["bg_sea"], dpi=300, bbox_inches='tight')
     buf.seek(0)
     plt.close(fig)
     return buf
 
-# --- VMESNIK ---
-st.title("🎨 Končni Generator Posterjev")
-mesto = st.text_input("Mesto", "Piran")
-drzava = st.text_input("Država", "Slovenia")
-razdalja = st.slider("Povečava (Zoom)", 1000, 10000, 5000) # Večji zoom pomaga najti morje
-izbrana_tema = st.selectbox("Stil", list(THEMES.keys()))
+# --- STREAMLIT VMESNIK ---
+st.title("🎨 Popoln Generator Posterjev")
 
-if st.button("🚀 Ustvari čist poster"):
-    with st.spinner("Popravljam morje in koordinate..."):
+mesto = st.text_input("Ime mesta", "Piran")
+drzava = st.text_input("Država", "Slovenia")
+razdalja = st.slider("Zoom (metri)", 1000, 8000, 4000)
+izbrana_tema = st.selectbox("Izberi stil", list(THEMES.keys()))
+
+if st.button("🚀 Ustvari Poster"):
+    with st.spinner("Generiram morje in koordinate..."):
         try:
-            img = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
-            st.image(img, use_container_width=True)
-            st.download_button("Prenesi PNG", img, file_name=f"{mesto}.png")
+            slika = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
+            st.image(slika, use_container_width=True)
+            st.download_button("Preuzmi Poster", slika, file_name=f"{mesto}.png")
         except Exception as e:
             st.error(f"Napaka: {e}")
