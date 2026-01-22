@@ -13,7 +13,7 @@ THEMES = {
 
 def dobi_koordinate(mesto, drzava):
     try:
-        geolocator = Nominatim(user_agent="city_poster_2026_final")
+        geolocator = Nominatim(user_agent="city_poster_2026_v7")
         loc = geolocator.geocode(f"{mesto}, {drzava}")
         if loc:
             return f"{abs(loc.latitude):.4f}° N / {abs(loc.longitude):.4f}° E"
@@ -28,9 +28,10 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     # 1. Pridobivanje cest
     graf = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
     
-    # 2. Pridobivanje kopna (administrativne meje so najbolj zanesljive za morje)
+    # 2. Pridobivanje kopna (uporabimo meje mesta, da vemo, kje je zemlja)
     try:
-        kopno = ox.features_from_address(kraj, tags={"boundary": "administrative", "admin_level": ["8", "9", "10"]}, dist=razdalja)
+        # Iščemo administrativno območje, ki nam služi kot maska za kopno
+        kopno = ox.features_from_address(kraj, tags={"boundary": "administrative", "admin_level": ["8", "9"]}, dist=razdalja)
     except:
         kopno = None
 
@@ -38,7 +39,7 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["sea"])
     ax.set_facecolor(barve["sea"])
     
-    # Najprej narišemo kopno čez modro ozadje
+    # Najprej narišemo kopno (belo/sivo) čez modro morje
     if kopno is not None and not kopno.empty:
         kopno.plot(ax=ax, color=barve["land"], zorder=1)
     
@@ -47,7 +48,7 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     
     ax.axis('off')
     
-    # BELI PAS SPODAJ (Fiksno za napise)
+    # BELI PAS SPODAJ (Fiksen prostor za napise)
     plt.subplots_adjust(bottom=0.22)
     rect = plt.Rectangle((0, 0), 1, 0.22, transform=fig.transFigure, facecolor="#F1F4F7", zorder=10)
     fig.patches.append(rect)
@@ -75,7 +76,7 @@ razdalja = st.slider("Zoom (v metrih)", 1000, 8000, 4000)
 izbrana_tema = st.selectbox("Izberi umetniški stil", list(THEMES.keys()))
 
 if st.button("🚀 Ustvari poster"):
-    with st.spinner("Rišem morje, kopno in koordinate..."):
+    with st.spinner("Generiram morje in kopno..."):
         try:
             slika_buf = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
             st.image(slika_buf, use_container_width=True)
@@ -88,9 +89,9 @@ st.write("---")
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 st.markdown(f'''
     <div style="text-align: center;">
-        <p>Podpri razvoj s kavo! ☕</p>
+        <p>Ti je generator všeč? Podpri razvoj! ☕</p>
         <a href="{paypal_url}" target="_blank" style="text-decoration: none;">
-            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 25px; font-weight: bold; display: inline-block;">
+            <div style="background-color: #ffc439; color: black; padding: 12px 24px; border-radius: 25px; font-weight: bold; display: inline-block; font-family: Arial;">
                 Donate
             </div>
         </a>
