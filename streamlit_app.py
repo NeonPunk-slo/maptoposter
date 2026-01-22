@@ -1,5 +1,13 @@
 import streamlit as st
-from poster import create_map_poster, THEMES
+import io
+
+# Ker so stili v tvoji kodi definirani v poster.py, jih uvozimo previdno
+try:
+    from poster import create_map_poster, THEMES
+except ImportError:
+    # Če uvoz ne uspe, definiramo vsaj osnovni stil, da stran deluje
+    from poster import create_map_poster
+    THEMES = {"Standard": {"water": "#DEE1E6", "land": "#F8F9FA", "roads": "#FFFFFF", "text": "#202124"}}
 
 # Naslov strani
 st.title("🎨 Generator mestnih posterjev")
@@ -15,15 +23,12 @@ if st.button("🚀 Ustvari poster"):
     colors = THEMES[theme_name]
     place = f"{city}, {country}"
     
-    # Spinner mora biti pravilno zamaknjen (4 presledki)
     with st.spinner("Pridobivam podatke iz zemljevidov... Počakaj trenutek."):
         try:
-            # Koda znotraj spinnerja mora biti še dodatno zamaknjena
             img = create_map_poster(place, colors, dist)
             st.image(img, caption=f"{city}, {country}", use_container_width=True)
             
             # Gumb za prenos slike
-            import io
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             byte_im = buf.getvalue()
@@ -39,14 +44,14 @@ if st.button("🚀 Ustvari poster"):
 # Razdelek za donacije (PayPal)
 st.write("---")
 st.subheader("☕ Podpri projekt")
-st.write("Če ti je generator všeč, lahko podpreš moj trud z majhno donacijo. Vsak evro pomaga pri razvoju in vzdrževanju strani!")
+st.write("Če ti je generator všeč, lahko podpreš moj trud z majhno donacijo. Vsak evro pomaga pri razvoju!")
 
-# Tvoja uradna PayPal povezava
+# Tvoja uradna PayPal povezava iz gem20.png
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 
 st.markdown(f'''
     <a href="{paypal_url}" target="_blank">
-        <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" alt="Donate with PayPal">
+        <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" alt="Donate">
     </a>
 ''', unsafe_allow_html=True)
 
