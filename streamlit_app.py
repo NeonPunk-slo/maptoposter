@@ -1,70 +1,60 @@
 import streamlit as st
 import io
 import osmnx as ox
-from PIL import Image
+import matplotlib.pyplot as plt
 
-# Funkcija za ustvarjanje zemljevida (zdaj je direktno tukaj)
-def create_map_poster(place, colors, dist):
-    # Pridobivanje podatkov iz OpenStreetMap
-    gdf = ox.features_from_place(place, tags={"highway": True}, buffer_dist=dist)
+# Funkcija za ustvarjanje zemljevida
+def create_map_poster(place, dist):
+    # Pridobivanje cest (network) namesto features, kar je hitreje in bolj zanesljivo
+    graph = ox.graph_from_address(place, dist=dist, network_type="all")
     
-    # Risanje s statično barvno shemo
+    # Risanje
     fig, ax = ox.plot_graph(
-        ox.graph_from_address(place, dist=dist),
+        graph,
         node_size=0,
-        edge_color=colors["roads"],
-        edge_linewidth=1,
-        bgcolor=colors["land"],
+        edge_color="#FFFFFF",
+        edge_linewidth=0.8,
+        bgcolor="#202124",
         show=False,
         close=True
     )
     
-    # Pretvorba v sliko za Streamlit
+    # Shranjevanje v buffer
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", facecolor=fig.get_facecolor(), dpi=300)
+    fig.savefig(buf, format="png", facecolor="#202124", dpi=300, bbox_inches='tight', pad_inches=0)
     buf.seek(0)
-    return Image.open(buf)
+    plt.close(fig)
+    return buf
 
 # Nastavitve strani
 st.title("🎨 Generator mestnih posterjev")
 st.write("Vnesi podatke in ustvari svoj unikatni zemljevid.")
 
-# Vnosi
-city = st.text_input("Mesto", "Novo mesto")
+city = st.text_input("Mesto", "Jesenice")
 country = st.text_input("Država", "Slovenia")
 dist = st.slider("Razdalja v metrih (zoom)", 500, 5000, 2500)
 
-# Barvna shema
-colors = {
-    "land": "#202124",
-    "roads": "#FFFFFF"
-}
-
 if st.button("🚀 Ustvari poster"):
     place = f"{city}, {country}"
-    with st.spinner("Pridobivam podatke... To lahko traja do 1 minute."):
+    with st.spinner("Pridobivam podatke iz zemljevidov... Počakaj trenutek."):
         try:
-            img = create_map_poster(place, colors, dist)
-            st.image(img, caption=place, use_container_width=True)
+            img_buf = create_map_poster(place, dist)
+            st.image(img_buf, caption=place, use_container_width=True)
             
-            # Gumb za prenos
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
             st.download_button(
                 label="Prenesi poster",
-                data=buf.getvalue(),
+                data=img_buf,
                 file_name=f"{city}_poster.png",
                 mime="image/png"
             )
         except Exception as e:
-            st.error(f"Napaka pri generiranju. Poskusi drugo mesto ali večjo razdaljo. Opis: {e}")
+            st.error(f"Napaka pri generiranju: {e}")
 
 # PayPal razdelek
 st.write("---")
 st.subheader("☕ Podpri projekt")
 st.write("Če ti je generator všeč, me lahko podpreš za kavo!")
 
-# Tvoja povezava
 paypal_url = "https://www.paypal.me/NeonPunkSlo"
 
 st.markdown(f'''
