@@ -3,10 +3,10 @@ import io
 import osmnx as ox
 import matplotlib.pyplot as plt
 
-# 1. POSODOBLJENE PERFEKCIONISTIČNE TEME
+# 1. PERFEKCIONISTIČNE TEME (Spremenjeno ime za zeleno temo)
 TEME = {
     "Morski razgled (Moder)": {"bg": "#F1F4F7", "water": "#A5D1E8", "text": "#063951", "ac": "#E67E22", "glavne": "#063951"},
-    "Halaški griči (Zelen)": {"bg": "#F9FBF7", "water": "#DDEBDB", "text": "#2D4221", "ac": "#8B4513", "glavne": "#4B633D"},
+    "Gozdna tišina (Zelen)": {"bg": "#F9FBF7", "water": "#DDEBDB", "text": "#2D4221", "ac": "#8B4513", "glavne": "#4B633D"},
     "Skandinavski minimal": {"bg": "#FFFFFF", "water": "#E5E5E5", "text": "#222222", "ac": "#000000", "glavne": "#666666"},
     "Cyberpunk Original": {"bg": "#050B16", "water": "#0D1B2A", "text": "#FFD700", "ac": "#FF00FF", "glavne": "#FFD700"},
     "Klasičen temen": {"bg": "#1A1A1B", "water": "#0F161E", "text": "#FFFFFF", "ac": "#00FFFF", "glavne": "#FFFFFF"},
@@ -23,9 +23,13 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     barve = TEME[ime_teme]
     ox.settings.timeout = 300
     
+    # Pridobivanje meja (bbox)
     north, south, east, west = ox.utils_geo.bbox_from_point((lat, lon), dist=razdalja)
+
+    # Pridobivanje podatkov o cestah
     G = ox.graph_from_point((lat, lon), dist=razdalja, network_type="all", simplify=True, retain_all=True)
     
+    # Pridobivanje podatkov o vodi
     try:
         water = ox.features_from_bbox(north, south, east, west, tags={
             'natural': ['water', 'bay', 'strait'], 
@@ -35,6 +39,7 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     except:
         water = None
 
+    # Barve cest
     road_colors, road_widths = [], []
     for u, v, k, data in G.edges(data=True, keys=True):
         h_type = data.get("highway", "unclassified")
@@ -44,12 +49,15 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
         else:
             road_colors.append(barve["glavne"]); road_widths.append(0.7)
 
+    # --- A4 FORMAT (8.27 x 11.69 in) ---
     fig, ax = plt.subplots(figsize=(8.27, 11.69), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
+    # 1. IZRIS VODE
     if water is not None and not water.empty:
         water.plot(ax=ax, color=barve["water"], edgecolor='none')
     
+    # 2. IZRIS CEST
     ox.plot_graph(G, ax=ax, node_size=0, edge_color=road_colors, 
                   edge_linewidth=road_widths, show=False, close=False)
     
@@ -57,11 +65,21 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     ax.set_xlim(west, east)
     ax.axis('off')
     
+    # --- CENTRIRAN NAPIS (Točno v sredini spodnjega praznega polja) ---
     plt.subplots_adjust(bottom=0.22)
-    fig.text(0.5, 0.11, mesto.upper(), fontsize=32, color=barve["text"], ha="center", fontweight='bold')
-    fig.text(0.5, 0.08, drzava.upper(), fontsize=14, color=barve["text"], ha="center", alpha=0.7)
+    
+    # Ime mesta
+    fig.text(0.5, 0.11, mesto.upper(), fontsize=32, color=barve["text"], 
+             ha="center", fontweight='bold')
+    
+    # Država
+    fig.text(0.5, 0.08, drzava.upper(), fontsize=14, color=barve["text"], 
+             ha="center", alpha=0.7)
+    
+    # Koordinate
     koord_tekst = f"{abs(lat):.4f}° {'N' if lat>0 else 'S'} / {abs(lon):.4f}° {'E' if lon>0 else 'W'}"
-    fig.text(0.5, 0.05, koord_tekst, fontsize=9, color=barve["text"], ha="center", family="monospace", alpha=0.5)
+    fig.text(0.5, 0.05, koord_tekst, fontsize=9, color=barve["text"], 
+             ha="center", family="monospace", alpha=0.5)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor=barve["bg"], dpi=300, bbox_inches='tight', pad_inches=0.4)
@@ -90,7 +108,7 @@ if st.button("✨ GENERIRAJ MOJSTROVINO"):
         except Exception as e:
             st.error(f"Napaka: {e}")
 
-# --- PAYPAL DONATE ---
+# --- PAYPAL DONACIJA ---
 st.write("---")
 st.markdown(
     """
