@@ -2,7 +2,6 @@ import streamlit as st
 import io
 import osmnx as ox
 import matplotlib.pyplot as plt
-from shapely.geometry import box
 
 # 1. PERFEKCIONISTIČNE TEME
 TEME = {
@@ -51,18 +50,20 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
             road_colors.append(barve["glavne"])
             road_widths.append(0.8)
 
-    # TU SE JE POJAVILA NAPAKA - Zamik mora biti točno pod prejšnjimi vrsticami
+    # Ustvarjanje figure
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
-    # Izris vode (zorder 1)
+    # 1. NAJPREJ IZRIŠEMO VODO (ročno na ax)
     if water is not None and not water.empty:
-        water.plot(ax=ax, color=barve["water"], edgecolor='none', zorder=1)
+        water.plot(ax=ax, color=barve["water"], edgecolor='none')
     
-    # Izris cest (zorder 2)
+    # 2. NATO IZRIŠEMO CESTE (brez zorder argumenta)
+    # OSMNX bo ceste narisal čez obstoječo vodo na ax
     ox.plot_graph(G, ax=ax, node_size=0, edge_color=road_colors, 
-                  edge_linewidth=road_widths, show=False, close=False, zorder=2)
+                  edge_linewidth=road_widths, show=False, close=False)
     
+    # Ponovno omejimo pogled (plot_graph ga včasih ponastavi)
     ax.set_ylim(south, north)
     ax.set_xlim(west, east)
     ax.axis('off')
@@ -84,7 +85,7 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     plt.close(fig)
     return buf
 
-# --- UI ---
+# --- UI (Streamlit del ostane enak) ---
 st.set_page_config(page_title="Mestna Poezija Premium")
 st.title("🎨 MESTNA POEZIJA PRO")
 
@@ -94,7 +95,7 @@ zoom_vnos = st.slider("Zoom (m)", 500, 10000, 2500)
 tema_vnos = st.selectbox("Izberi slog", list(TEME.keys()))
 
 if st.button("✨ GENERIRAJ POSTER"):
-    with st.spinner("Pripravljam podatke..."):
+    with st.spinner("Pripravljam podatke in rišem morje..."):
         try:
             slika = ustvari_poster(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
             st.image(slika)
