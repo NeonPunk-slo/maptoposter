@@ -2,7 +2,6 @@ import streamlit as st
 import io
 import osmnx as ox
 import matplotlib.pyplot as plt
-from geopy.geocoders import Nominatim
 
 # 1. TEME
 TEME = {
@@ -13,41 +12,27 @@ TEME = {
     "Minimalističen bel": {"bg": "#ffffff", "water": "#b3e5fc", "text": "#000000", "ac": "#000000", "glavne": "#95A5A6", "ostalo": "#ECF0F1"}
 }
 
-# 2. POPRAVLJENA FUNKCIJA (Odporna na blokade)
-@st.cache_data(show_spinner=False)
-def dobi_koordinate_safe(mesto, drzava):
-    # Lokalni seznam za najpogostejše kraje (da sploh ne rabiš interneta)
-    lokalni_cache = {
+# 2. FIKSNI SEZNAM KOORDINAT (Brez interneta!)
+def dobi_koordinate_offline(mesto):
+    mesto = mesto.lower().strip()
+    lokalni_podatki = {
         "ljubljana": "46.0569° S / 14.5058° V",
         "piran": "45.5283° S / 13.5683° V",
         "maribor": "46.5547° S / 15.6459° V",
         "koper": "45.5469° S / 13.7294° V",
+        "celje": "46.2360° S / 15.2677° V",
         "haloze": "46.3333° S / 15.9333° V"
     }
-    
-    kljuc = mesto.lower().strip()
-    if kljuc in lokalni_cache:
-        return lokalni_cache[kljuc]
-
-    # Če mesta ni v seznamu, poskusi Nominatim, a z bypassom napake
-    try:
-        geolocator = Nominatim(user_agent="mestna_poezija_v26_final_safe")
-        loc = geolocator.geocode(f"{mesto}, {drzava}", timeout=3)
-        if loc:
-            lat_dir = "S" if loc.latitude >= 0 else "J"
-            lon_dir = "V" if loc.longitude >= 0 else "Z"
-            return f"{abs(loc.latitude):.4f}° {lat_dir} / {abs(loc.longitude):.4f}° {lon_dir}"
-    except:
-        pass # Ignoriraj napako in vrni rezervo
-        
-    return "46.0500° S / 14.5000° V" # Rezerva, da program ne crkne
+    # Če kraja ni na seznamu, vrne generične koordinate, da se koda ne ustavi
+    return lokalni_podatki.get(mesto, "46.0500° S / 14.5000° V")
 
 def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     kraj = f"{mesto}, {drzava}"
     barve = TEME[ime_teme]
     
-    # OSMnx iskanje cest (ločeno od Nominatima)
+    # OSMnx uporablja Overpass API (ponavadi ne blokira)
     G = ox.graph_from_address(kraj, dist=razdalja, network_type="all")
+    
     try:
         voda = ox.features_from_address(kraj, tags={"natural": ["water", "coastline", "bay"], "water": True, "waterway": "river"}, dist=razdalja)
     except:
@@ -79,8 +64,8 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     fig.text(0.5, 0.14, mesto.upper(), fontsize=65, color=barve["text"], ha="center", fontweight="bold")
     fig.text(0.5, 0.10, drzava.upper(), fontsize=25, color=barve["text"], ha="center", alpha=0.8)
     
-    # Uporaba varne funkcije
-    koordinata_str = dobi_koordinate_safe(mesto, drzava)
+    # TUKAJ JE KLJUČ: Pokličemo offline funkcijo
+    koordinata_str = dobi_koordinate_offline(mesto)
     fig.text(0.5, 0.06, koordinata_str, fontsize=18, color=barve["text"], ha="center", alpha=0.6, family="monospace")
 
     buf = io.BytesIO()
@@ -93,22 +78,20 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
 st.set_page_config(page_title="Mestna Poezija", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🎨 Mestna Poezija</h1>", unsafe_allow_html=True)
 
-with st.container():
-    mesto = st.text_input("Ime kraja", "Ljubljana")
-    drzava = st.text_input("Država", "Slovenija")
-    razdalja = st.number_input("Zoom (v metrih)", min_value=500, max_value=30000, value=5000)
-    izbrana_tema = st.selectbox("Umetniški slog", list(TEME.keys()))
+mesto = st.text_input("Ime kraja", "Piran")
+drzava = st.text_input("Država", "Slovenija")
+razdalja = st.number_input("Zoom (v metrih)", min_value=500, max_value=20000, value=3000)
+izbrana_tema = st.selectbox("Umetniški slog", list(TEME.keys()))
 
 if st.button("✨ Ustvari poster"):
-    with st.spinner("Pripravljam tvoj poster..."):
+    with st.spinner("Pripravljam umetnino..."):
         try:
             slika_buf = ustvari_poster(mesto, drzava, razdalja, izbrana_tema)
             st.image(slika_buf, use_container_width=True)
             st.download_button(label="📥 Prenesi poster (PNG)", data=slika_buf, file_name=f"{mesto}_poezija.png")
         except Exception as e:
-            st.error(f"OSMnx strežnik je zaseden ali kraj ni najden. Poskusi čez trenutek. Napaka: {e}")
+            st.error(f"Prišlo je do napake pri iskanju cest. Poskusi čez par minut ali zamenjaj kraj. Napaka: {e}")
 
 # Donacija
 st.write("---")
-paypal_url = "https://www.paypal.me/NeonPunkSlo"
-st.markdown(f'''<div style="text-align: center; padding: 20px;"><a href="{paypal_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #ffc439; color: black; padding: 14px 28px; border-radius: 30px; font-weight: bold; display: inline-block;">💛 PayPal Donacija</div></a></div>''', unsafe_allow_html=True)
+st.markdown(f'''<div style="text-align: center;"><a href="https://www.paypal.me/NeonPunkSlo" target="_blank" style="text-decoration: none;"><div style="background-color: #ffc439; color: black; padding: 14px 28px; border-radius: 30px; font-weight: bold; display: inline-block;">💛 PayPal Donacija</div></a></div>''', unsafe_allow_html=True)
