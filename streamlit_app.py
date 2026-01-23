@@ -62,21 +62,19 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     ax.set_xlim(west, east)
     ax.axis('off')
     
-    # --- PRILAGOJEN NAPIS (VIŠJE IN STRNJENO) ---
-    # Dvignili smo napis z 0.08 na 0.12, da ni "nalepljen" na spodnji rob
-    plt.subplots_adjust(bottom=0.18)
+    # --- CENTRIRAN NAPIS V BELEM DELU ---
+    # bottom=0.20 pusti dovolj prostora spodaj, da napisi niso stisnjeni h grafu
+    plt.subplots_adjust(bottom=0.22)
     
-    # Ime mesta
-    fig.text(0.5, 0.12, mesto.upper(), fontsize=30, color=barve["text"], 
+    # Napisi so zdaj postavljeni točno v sredino spodnjega praznega prostora
+    fig.text(0.5, 0.11, mesto.upper(), fontsize=32, color=barve["text"], 
              ha="center", fontweight='bold')
     
-    # Država
-    fig.text(0.5, 0.10, drzava.upper(), fontsize=13, color=barve["text"], 
+    fig.text(0.5, 0.08, drzava.upper(), fontsize=14, color=barve["text"], 
              ha="center", alpha=0.7)
     
-    # Koordinate
     koord_tekst = f"{abs(lat):.4f}° {'N' if lat>0 else 'S'} / {abs(lon):.4f}° {'E' if lon>0 else 'W'}"
-    fig.text(0.5, 0.08, koord_tekst, fontsize=9, color=barve["text"], 
+    fig.text(0.5, 0.05, koord_tekst, fontsize=9, color=barve["text"], 
              ha="center", family="monospace", alpha=0.5)
 
     buf = io.BytesIO()
@@ -85,25 +83,24 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     plt.close(fig)
     return buf
 
-# --- UI ---
+# --- UI (Streamlit del) ---
 st.set_page_config(page_title="Mestna Poezija Premium", page_icon="🎨")
 st.title("🎨 MESTNA POEZIJA PRO")
 
 col1, col2 = st.columns(2)
 with col1:
-    mesto_vnos = st.text_input("Vnesi mesto", "Piran")
+    mesto_vnos = st.text_input("Mesto", "Piran")
     drzava_vnos = st.text_input("Država", "Slovenija")
 with col2:
-    # Slider zamenjan z vnosom številke
-    zoom_vnos = st.number_input("Zoom (v metrih)", min_value=500, max_value=20000, value=2500, step=100)
+    zoom_vnos = st.number_input("Mera zooma (metri)", min_value=500, max_value=20000, value=2500, step=100)
     tema_vnos = st.selectbox("Izberi slog", list(TEME.keys()))
 
 if st.button("✨ GENERIRAJ MOJSTROVINO"):
-    with st.spinner("Ustvarjam vaš A4 poster..."):
+    with st.spinner("Pripravljam centriran A4 poster..."):
         try:
             slika = ustvari_poster(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
             st.image(slika, use_container_width=True)
-            st.download_button("📥 PRENESI A4 POSTER (PNG)", slika, file_name=f"{mesto_vnos}_A4.png")
+            st.download_button("📥 PRENESI A4 POSTER", slika, file_name=f"{mesto_vnos}_A4_centriran.png")
         except Exception as e:
             st.error(f"Napaka: {e}")
 
