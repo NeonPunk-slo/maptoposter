@@ -12,7 +12,7 @@ TEME = {
     "Minimalističen bel": {"bg": "#ffffff", "water": "#b3e5fc", "text": "#000000", "ac": "#000000", "glavne": "#95A5A6", "ostalo": "#ECF0F1"}
 }
 
-# 2. OFFLINE KOORDINATE
+# 2. OFFLINE KOORDINATE (Zaščita pred Reddit navaloma)
 def dobi_koordinate_offline(mesto):
     mesto = mesto.lower().strip()
     db = {
@@ -29,7 +29,7 @@ def dobi_koordinate_offline(mesto):
 
 # 3. GLAVNA FUNKCIJA
 def ustvari_poster(mesto, drzava, razdalja, ime_teme):
-    ox.settings.timeout = 90
+    ox.settings.timeout = 120  # Povečan timeout za Reddit naval
     ox.settings.use_cache = True
     
     kraj = f"{mesto}, {drzava}"
@@ -68,7 +68,6 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.22)
     
-    # Namesto letterspacing uporabimo razmik s presledki v tekstu
     mesto_str = "  ".join(mesto.upper())
     drzava_str = "    ".join(drzava.upper()) if drzava else ""
     
@@ -84,26 +83,45 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     plt.close(fig)
     return buf
 
-# --- UI ---
-st.set_page_config(page_title="Mestna Poezija Premium")
+# --- UI PREOBRAZBA ---
+st.set_page_config(page_title="Mestna Poezija Premium", layout="centered")
 st.markdown("<style>header {visibility: hidden;} footer {visibility: hidden;} .stApp {background-color: #0e1117; color: white;}</style>", unsafe_allow_html=True)
 
 st.title("🎨 MESTNA POEZIJA")
+st.write("Vnesi podatke in ustvari unikatno vektorsko karto.")
 
-mesto_vnos = st.text_input("Ime mesta", "Piran")
-drzava_vnos = st.text_input("Država", "Slovenija")
-zoom_vnos = st.slider("Zoom (m)", 500, 8000, 2500)
-tema_vnos = st.selectbox("Slog", list(TEME.keys()))
+# Uporaba stolpcev za boljši UI
+col1, col2 = st.columns(2)
 
-if st.button("✨ USTVARI"):
-    with st.spinner("Rišem..."):
+with col1:
+    mesto_vnos = st.text_input("Ime mesta", "Piran")
+    # Zamenjava sliderja z number_input
+    zoom_vnos = st.number_input("Zoom (v metrih od središča)", min_value=100, max_value=20000, value=2500, step=100)
+
+with col2:
+    drzava_vnos = st.text_input("Država", "Slovenija")
+    tema_vnos = st.selectbox("Izberi umetniški slog", list(TEME.keys()))
+
+st.write("---")
+
+if st.button("✨ GENERIRAJ PERFEKTEN POSTER"):
+    with st.spinner("Pridobivanje vektorskih podatkov in risanje..."):
         try:
             poster = ustvari_poster(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
-            st.image(poster)
-            st.download_button("📥 PRENESI", poster, file_name=f"{mesto_vnos}_poster.png")
+            st.image(poster, use_container_width=True)
+            st.download_button("📥 PRENESI SLIKO (300 DPI)", poster, file_name=f"{mesto_vnos}_poezija.png", mime="image/png")
         except Exception as e:
-            st.error(f"Napaka: {e}")
+            st.error(f"Strežnik je zaseden ali kraj ni najden. Poskusi z manjšim zoomom. (Podrobnosti: {e})")
 
-# Donacija
+# Podpora za tvoje sanje o morju
 st.write("---")
-st.markdown(f'<div style="text-align: center;"><a href="https://www.paypal.me/NeonPunkSlo" target="_blank" style="text-decoration: none;"><div style="background-color: #ffc439; color: black; padding: 15px 30px; border-radius: 40px; font-weight: bold; display: inline-block;">💛 PayPal Donacija</div></a></div>', unsafe_allow_html=True)
+st.markdown(f'''
+    <div style="text-align: center;">
+        <p style="color: #aaa;">Ti je aplikacija všeč? Pomagaj mi do stanovanja na morju!</p>
+        <a href="https://www.paypal.me/NeonPunkSlo" target="_blank" style="text-decoration: none;">
+            <div style="background-color: #ffc439; color: black; padding: 15px 30px; border-radius: 40px; font-weight: bold; display: inline-block; font-size: 1.2em;">
+                💛 PayPal Donacija
+            </div>
+        </a>
+    </div>
+''', unsafe_allow_html=True)
