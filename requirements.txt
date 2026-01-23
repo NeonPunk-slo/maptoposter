@@ -1,5 +1,2 @@
 streamlit
 osmnx
-matplotlib
-geopy
-geopandas
