@@ -1,6 +1,5 @@
 streamlit
 osmnx==1.9.1
 matplotlib
-geopy
 geopandas
 scipy
