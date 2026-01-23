@@ -3,7 +3,7 @@ import io
 import osmnx as ox
 import matplotlib.pyplot as plt
 
-# 1. PERFEKCIONISTIČNE TEME (Voda ima svojo barvo, da "oživi" mesto)
+# 1. PERFEKCIONISTIČNE TEME
 TEME = {
     "Cyberpunk Original": {"bg": "#050B16", "water": "#0D1B2A", "text": "#FFD700", "ac": "#FF00FF", "glavne": "#FFD700"},
     "Morski razgled (Moder)": {"bg": "#F1F4F7", "water": "#A5D1E8", "text": "#063951", "ac": "#E67E22", "glavne": "#063951"},
@@ -20,13 +20,12 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     barve = TEME[ime_teme]
     ox.settings.timeout = 300
     
-    # Pridobivanje meja (bbox) za vodo in ceste
+    # Pridobivanje meja (bbox)
     north, south, east, west = ox.utils_geo.bbox_from_point((lat, lon), dist=razdalja)
 
-    # A. Pridobivanje podatkov o cestah
+    # Pridobivanje podatkov
     G = ox.graph_from_point((lat, lon), dist=razdalja, network_type="all", simplify=True, retain_all=True)
     
-    # B. Pridobivanje podatkov o vodi (Savinja v Celju, morje v Piranu)
     try:
         water = ox.features_from_bbox(north, south, east, west, tags={
             'natural': ['water', 'bay', 'strait'], 
@@ -36,77 +35,80 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     except:
         water = None
 
-    # Barve in debeline cest
+    # Barve cest
     road_colors, road_widths = [], []
     for u, v, k, data in G.edges(data=True, keys=True):
         h_type = data.get("highway", "unclassified")
         if isinstance(h_type, list): h_type = h_type[0]
         if h_type in ["motorway", "trunk", "motorway_link", "trunk_link"]:
-            road_colors.append(barve["ac"]); road_widths.append(4.0)
+            road_colors.append(barve["ac"]); road_widths.append(3.5)
         else:
-            road_colors.append(barve["glavne"]); road_widths.append(0.8)
+            road_colors.append(barve["glavne"]); road_widths.append(0.7)
 
-    # --- IZRIS V A4 FORMATU (8.27 x 11.69 inčev) ---
+    # --- A4 FORMAT ---
     fig, ax = plt.subplots(figsize=(8.27, 11.69), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
-    # 1. NAJPREJ VODA (Masivni barvni bloki)
+    # Izris vode
     if water is not None and not water.empty:
-        water.plot(ax=ax, color=barve["water"], edgecolor='none', alpha=1.0)
+        water.plot(ax=ax, color=barve["water"], edgecolor='none', zorder=1)
     
-    # 2. NATO CESTE (Preko vode)
+    # Izris cest
     ox.plot_graph(G, ax=ax, node_size=0, edge_color=road_colors, 
-                  edge_linewidth=road_widths, show=False, close=False)
+                  edge_linewidth=road_widths, show=False, close=False, zorder=2)
     
-    # Prisilimo graf, da ostane znotraj želenega zooma
     ax.set_ylim(south, north)
     ax.set_xlim(west, east)
     ax.axis('off')
     
-    # 3. BESEDILO (Minimalistično in centrirano)
-    plt.subplots_adjust(bottom=0.2)
-    mesto_spaced = "  ".join(mesto.upper())
-    drzava_spaced = "    ".join(drzava.upper())
+    # --- POSODOBLJEN IN MANJŠI NAPIS ---
+    # Premaknili smo ga nižje in zmanjšali font
+    plt.subplots_adjust(bottom=0.15)
     
-    fig.text(0.5, 0.15, mesto_spaced, fontsize=45, color=barve["text"], ha="center", fontweight='bold')
-    fig.text(0.5, 0.11, drzava_spaced, fontsize=18, color=barve["text"], ha="center", alpha=0.8)
+    # Ime mesta (brez velikih presledkov)
+    fig.text(0.5, 0.12, mesto.upper(), fontsize=32, color=barve["text"], 
+             ha="center", fontweight='bold', letterspacing=2)
     
+    # Država (bolj subtilno)
+    fig.text(0.5, 0.09, drzava.upper(), fontsize=14, color=barve["text"], 
+             ha="center", alpha=0.7, letterspacing=3)
+    
+    # Koordinate (majhne na dnu)
     koord_tekst = f"{abs(lat):.4f}° {'N' if lat>0 else 'S'} / {abs(lon):.4f}° {'E' if lon>0 else 'W'}"
-    fig.text(0.5, 0.08, koord_tekst, fontsize=12, color=barve["text"], ha="center", family="monospace")
+    fig.text(0.5, 0.06, koord_tekst, fontsize=9, color=barve["text"], 
+             ha="center", family="monospace", alpha=0.5)
 
-    # Priprava za prenos
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", facecolor=barve["bg"], dpi=300, bbox_inches='tight', pad_inches=0.1)
+    fig.savefig(buf, format="png", facecolor=barve["bg"], dpi=300, bbox_inches='tight', pad_inches=0.4)
     buf.seek(0)
     plt.close(fig)
     return buf
 
-# --- STREAMLIT UI ---
+# --- UI (Streamlit del) ---
 st.set_page_config(page_title="Mestna Poezija Premium", page_icon="🎨")
 st.title("🎨 MESTNA POEZIJA PRO")
 
-mesto_vnos = st.text_input("Mesto", "Celje")
+mesto_vnos = st.text_input("Mesto", "Piran")
 drzava_vnos = st.text_input("Država", "Slovenija")
 zoom_vnos = st.slider("Zoom (m)", 500, 10000, 2500)
 tema_vnos = st.selectbox("Izberi slog", list(TEME.keys()))
 
 if st.button("✨ GENERIRAJ MOJSTROVINO"):
-    with st.spinner("Ustvarjam vaš A4 poster z vsemi detajli..."):
+    with st.spinner("Pripravljam eleganten A4 poster..."):
         try:
             slika = ustvari_poster(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
             st.image(slika, use_container_width=True)
             st.download_button("📥 PRENESI A4 POSTER", slika, file_name=f"{mesto_vnos}_A4.png")
         except Exception as e:
-            st.error(f"Napaka pri generiranju: {e}")
+            st.error(f"Napaka: {e}")
 
 # --- PAYPAL DONACIJA ---
 st.write("---")
 st.markdown(
     """
     <div style="text-align: center;">
-        <p style="color: grey;">Ti je aplikacija všeč? Podpri razvoj z donacijo!</p>
         <a href="https://www.paypal.me/NeonPunkSlo" target="_blank">
-            <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+            <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal donacija" />
         </a>
     </div>
     """,
