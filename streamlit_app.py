@@ -7,7 +7,7 @@ st.set_page_config(page_title="Mestna Poezija", layout="wide")
 
 st.markdown("<h1 style='text-align: center; color: #063951;'>🎨 Mestna Poezija</h1>", unsafe_allow_html=True)
 
-# 1. PRIPRAVA PODATKOV
+# Nastavitve v stranskem meniju
 mesto = st.sidebar.text_input("Ime kraja", "Ljubljana")
 drzava = st.sidebar.text_input("Država", "Slovenija")
 slog = st.sidebar.selectbox("Slog", ["Svetel", "Temen", "Retro"])
@@ -20,26 +20,18 @@ slogi = {
     "Retro": "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
 }
 
-# 2. ISKANJE LOKACIJE (Z varnostnim mehanizmom)
-@st.cache_data(timeout=600) # Shrani rezultat, da ne sprašuje preveč pogosto
-def dobi_lokacijo(m, d):
-    try:
-        # Unikaten agent, da nas ne zavrnejo
-        geolocator = Nominatim(user_agent="neon_punk_haloze_final_fix")
-        return geolocator.geocode(f"{m}, {d}", timeout=5)
-    except:
-        return None
+# Enostavno iskanje lokacije
+try:
+    geolocator = Nominatim(user_agent="neon_punk_final_fix_2026")
+    loc = geolocator.geocode(f"{mesto}, {drzava}", timeout=10)
+    if loc:
+        lat, lon = loc.latitude, loc.longitude
+    else:
+        lat, lon = 46.0569, 14.5058 # Rezerva: Ljubljana
+except:
+    lat, lon = 46.0569, 14.5058
 
-loc = dobi_lokacijo(mesto, drzava)
-
-# Če iskanje ne dela, uporabi privzete koordinate (Ljubljana), da stran ne ostane prazna
-if loc:
-    lat, lon = loc.latitude, loc.longitude
-else:
-    st.sidebar.warning("Baza koordinat trenutno ne odgovarja, prikazujem privzeto lokacijo.")
-    lat, lon = 46.0569, 14.5058 
-
-# 3. IZRIS ZEMLJEVIDA
+# Izris interaktivnega zemljevida
 m = folium.Map(
     location=[lat, lon],
     zoom_start=zoom,
@@ -50,12 +42,12 @@ m = folium.Map(
 
 st_folium(m, width=1200, height=600, use_container_width=True)
 
-# 4. NAPIS NA DNU
+# Estetski napis na dnu
 st.markdown(f"""
-    <div style='text-align: center; border-top: 2px solid #eee; padding-top: 20px;'>
-        <h1 style='font-size: 70px; margin-bottom: 0;'>{mesto.upper()}</h1>
-        <p style='font-size: 20px; letter-spacing: 10px;'>{drzava.upper()}</p>
-        <p style='font-family: monospace;'>{abs(lat):.4f}° {'S' if lat>=0 else 'J'} / {abs(lon):.4f}° {'V' if lon>=0 else 'Z'}</p>
+    <div style='text-align: center; border-top: 2px solid #eee; padding-top: 20px; margin-top: 20px;'>
+        <h1 style='font-size: 70px; font-weight: bold; margin-bottom: 0;'>{mesto.upper()}</h1>
+        <p style='font-size: 20px; letter-spacing: 10px; color: #666;'>{drzava.upper()}</p>
+        <p style='font-family: monospace; color: #999;'>{abs(lat):.4f}° S / {abs(lon):.4f}° V</p>
     </div>
 """, unsafe_allow_html=True)
 
