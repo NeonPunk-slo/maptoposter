@@ -1,1 +1,4 @@
-osmnx==1.9.1
+streamlit
+staticmap
+geopy
+matplotlib
