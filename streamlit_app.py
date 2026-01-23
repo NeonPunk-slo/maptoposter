@@ -50,11 +50,11 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     fig, ax = plt.subplots(figsize=(8.27, 11.69), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
-    # 1. NAJPREJ VODA (osnova)
+    # 1. IZRIS VODE
     if water is not None and not water.empty:
         water.plot(ax=ax, color=barve["water"], edgecolor='none')
     
-    # 2. NATO CESTE (brez zorder argumenta, se narišejo čez)
+    # 2. IZRIS CEST
     ox.plot_graph(G, ax=ax, node_size=0, edge_color=road_colors, 
                   edge_linewidth=road_widths, show=False, close=False)
     
@@ -62,20 +62,21 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     ax.set_xlim(west, east)
     ax.axis('off')
     
-    # --- POSODOBLJEN ELEGANTEN NAPIS ---
-    plt.subplots_adjust(bottom=0.12)
+    # --- PRILAGOJEN NAPIS (VIŠJE IN STRNJENO) ---
+    # Dvignili smo napis z 0.08 na 0.12, da ni "nalepljen" na spodnji rob
+    plt.subplots_adjust(bottom=0.18)
     
-    # Ime mesta (manjše in bolj skupaj)
-    fig.text(0.5, 0.08, mesto.upper(), fontsize=28, color=barve["text"], 
+    # Ime mesta
+    fig.text(0.5, 0.12, mesto.upper(), fontsize=30, color=barve["text"], 
              ha="center", fontweight='bold')
     
     # Država
-    fig.text(0.5, 0.06, drzava.upper(), fontsize=12, color=barve["text"], 
+    fig.text(0.5, 0.10, drzava.upper(), fontsize=13, color=barve["text"], 
              ha="center", alpha=0.7)
     
-    # Koordinate (diskretne)
+    # Koordinate
     koord_tekst = f"{abs(lat):.4f}° {'N' if lat>0 else 'S'} / {abs(lon):.4f}° {'E' if lon>0 else 'W'}"
-    fig.text(0.5, 0.04, koord_tekst, fontsize=8, color=barve["text"], 
+    fig.text(0.5, 0.08, koord_tekst, fontsize=9, color=barve["text"], 
              ha="center", family="monospace", alpha=0.5)
 
     buf = io.BytesIO()
@@ -84,17 +85,21 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     plt.close(fig)
     return buf
 
-# --- STREAMLIT UI ---
+# --- UI ---
 st.set_page_config(page_title="Mestna Poezija Premium", page_icon="🎨")
 st.title("🎨 MESTNA POEZIJA PRO")
 
-mesto_vnos = st.text_input("Vnesi mesto", "Piran")
-drzava_vnos = st.text_input("Država", "Slovenija")
-zoom_vnos = st.slider("Zoom (metri)", 500, 10000, 2500)
-tema_vnos = st.selectbox("Izberi slog", list(TEME.keys()))
+col1, col2 = st.columns(2)
+with col1:
+    mesto_vnos = st.text_input("Vnesi mesto", "Piran")
+    drzava_vnos = st.text_input("Država", "Slovenija")
+with col2:
+    # Slider zamenjan z vnosom številke
+    zoom_vnos = st.number_input("Zoom (v metrih)", min_value=500, max_value=20000, value=2500, step=100)
+    tema_vnos = st.selectbox("Izberi slog", list(TEME.keys()))
 
 if st.button("✨ GENERIRAJ MOJSTROVINO"):
-    with st.spinner("Pripravljam vaš A4 poster..."):
+    with st.spinner("Ustvarjam vaš A4 poster..."):
         try:
             slika = ustvari_poster(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
             st.image(slika, use_container_width=True)
@@ -107,9 +112,8 @@ st.write("---")
 st.markdown(
     """
     <div style="text-align: center;">
-        <p style="color: gray; font-size: 0.8em;">Ti je aplikacija všeč? Podpri razvoj.</p>
         <a href="https://www.paypal.me/NeonPunkSlo" target="_blank">
-            <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - Varno plačevanje" alt="Donate with PayPal button" />
+            <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="Donate with PayPal" />
         </a>
     </div>
     """,
