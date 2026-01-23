@@ -23,13 +23,14 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     # Pridobivanje meja (bbox)
     north, south, east, west = ox.utils_geo.bbox_from_point((lat, lon), dist=razdalja)
 
-    # Pridobivanje podatkov
+    # Pridobivanje podatkov o cestah
     G = ox.graph_from_point((lat, lon), dist=razdalja, network_type="all", simplify=True, retain_all=True)
     
+    # Pridobivanje podatkov o vodi
     try:
         water = ox.features_from_bbox(north, south, east, west, tags={
             'natural': ['water', 'bay', 'strait'], 
-            'waterway': ['riverbank', 'dock'],
+            'waterway': ['riverbank', 'dock', 'canal'],
             'place': 'sea'
         })
     except:
@@ -45,37 +46,36 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
         else:
             road_colors.append(barve["glavne"]); road_widths.append(0.7)
 
-    # --- A4 FORMAT ---
+    # --- A4 FORMAT (8.27 x 11.69 in) ---
     fig, ax = plt.subplots(figsize=(8.27, 11.69), facecolor=barve["bg"])
     ax.set_facecolor(barve["bg"])
     
-    # Izris vode
+    # 1. NAJPREJ VODA (osnova)
     if water is not None and not water.empty:
-        water.plot(ax=ax, color=barve["water"], edgecolor='none', zorder=1)
+        water.plot(ax=ax, color=barve["water"], edgecolor='none')
     
-    # Izris cest
+    # 2. NATO CESTE (brez zorder argumenta, se narišejo čez)
     ox.plot_graph(G, ax=ax, node_size=0, edge_color=road_colors, 
-                  edge_linewidth=road_widths, show=False, close=False, zorder=2)
+                  edge_linewidth=road_widths, show=False, close=False)
     
     ax.set_ylim(south, north)
     ax.set_xlim(west, east)
     ax.axis('off')
     
-    # --- POSODOBLJEN IN MANJŠI NAPIS ---
-    # Premaknili smo ga nižje in zmanjšali font
-    plt.subplots_adjust(bottom=0.15)
+    # --- POSODOBLJEN ELEGANTEN NAPIS ---
+    plt.subplots_adjust(bottom=0.12)
     
-    # Ime mesta (brez velikih presledkov)
-    fig.text(0.5, 0.12, mesto.upper(), fontsize=32, color=barve["text"], 
-             ha="center", fontweight='bold', letterspacing=2)
+    # Ime mesta (manjše in bolj skupaj)
+    fig.text(0.5, 0.08, mesto.upper(), fontsize=28, color=barve["text"], 
+             ha="center", fontweight='bold')
     
-    # Država (bolj subtilno)
-    fig.text(0.5, 0.09, drzava.upper(), fontsize=14, color=barve["text"], 
-             ha="center", alpha=0.7, letterspacing=3)
+    # Država
+    fig.text(0.5, 0.06, drzava.upper(), fontsize=12, color=barve["text"], 
+             ha="center", alpha=0.7)
     
-    # Koordinate (majhne na dnu)
+    # Koordinate (diskretne)
     koord_tekst = f"{abs(lat):.4f}° {'N' if lat>0 else 'S'} / {abs(lon):.4f}° {'E' if lon>0 else 'W'}"
-    fig.text(0.5, 0.06, koord_tekst, fontsize=9, color=barve["text"], 
+    fig.text(0.5, 0.04, koord_tekst, fontsize=8, color=barve["text"], 
              ha="center", family="monospace", alpha=0.5)
 
     buf = io.BytesIO()
@@ -84,21 +84,21 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
     plt.close(fig)
     return buf
 
-# --- UI (Streamlit del) ---
+# --- STREAMLIT UI ---
 st.set_page_config(page_title="Mestna Poezija Premium", page_icon="🎨")
 st.title("🎨 MESTNA POEZIJA PRO")
 
-mesto_vnos = st.text_input("Mesto", "Piran")
+mesto_vnos = st.text_input("Vnesi mesto", "Piran")
 drzava_vnos = st.text_input("Država", "Slovenija")
-zoom_vnos = st.slider("Zoom (m)", 500, 10000, 2500)
+zoom_vnos = st.slider("Zoom (metri)", 500, 10000, 2500)
 tema_vnos = st.selectbox("Izberi slog", list(TEME.keys()))
 
 if st.button("✨ GENERIRAJ MOJSTROVINO"):
-    with st.spinner("Pripravljam eleganten A4 poster..."):
+    with st.spinner("Pripravljam vaš A4 poster..."):
         try:
             slika = ustvari_poster(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
             st.image(slika, use_container_width=True)
-            st.download_button("📥 PRENESI A4 POSTER", slika, file_name=f"{mesto_vnos}_A4.png")
+            st.download_button("📥 PRENESI A4 POSTER (PNG)", slika, file_name=f"{mesto_vnos}_A4.png")
         except Exception as e:
             st.error(f"Napaka: {e}")
 
@@ -107,8 +107,9 @@ st.write("---")
 st.markdown(
     """
     <div style="text-align: center;">
+        <p style="color: gray; font-size: 0.8em;">Ti je aplikacija všeč? Podpri razvoj.</p>
         <a href="https://www.paypal.me/NeonPunkSlo" target="_blank">
-            <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal donacija" />
+            <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - Varno plačevanje" alt="Donate with PayPal button" />
         </a>
     </div>
     """,
