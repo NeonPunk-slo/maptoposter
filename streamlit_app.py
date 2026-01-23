@@ -3,10 +3,9 @@ import io
 import osmnx as ox
 import matplotlib.pyplot as plt
 
-# 1. NASTAVITVE - To mora biti čisto prva stvar
+# 1. NASTAVITVE
 st.set_page_config(page_title="MESTNA POEZIJA", page_icon="🎨")
 
-# 2. TEME (Tvoje originalne)
 TEME = {
     "Morski razgled (Moder)": {"bg": "#F1F4F7", "water": "#A5D1E8", "text": "#063951", "ac": "#E67E22", "glavne": "#063951"},
     "Gozdna tišina (Zelen)": {"bg": "#F9FBF7", "water": "#DDEBDB", "text": "#2D4221", "ac": "#8B4513", "glavne": "#4B633D"},
@@ -17,19 +16,15 @@ TEME = {
     "Starinski papir": {"bg": "#f4f1ea", "water": "#a5c3cf", "text": "#333333", "ac": "#8B4513", "glavne": "#2F4F4F"}
 }
 
-# 3. KLJUČ DO STABILNOSTI: Cache z omejitvijo
-# max_entries=20 prepreči, da bi preveč shranjenih slik zapolnilo ves RAM
-@st.cache_data(show_spinner="Gorenjska tehnologija pripravlja poster...", max_entries=20)
-def ustvari_poster_cached(mesto, drzava, razdalja, ime_teme):
+# 2. CACHING - To omogoči, da aplikacija zdrži naval
+@st.cache_data(show_spinner="Pripravljam podatke in računam koordinate...", max_entries=20)
+def ustvari_poster_final(mesto, drzava, razdalja, ime_teme):
     try:
         lat, lon = ox.geocode(f"{mesto}, {drzava}")
-        
         barve = TEME[ime_teme]
         ox.settings.timeout = 300
         
         north, south, east, west = ox.utils_geo.bbox_from_point((lat, lon), dist=razdalja)
-
-        # Uporabimo network_type="drive", da je hitreje in zavzame manj spomina
         G = ox.graph_from_point((lat, lon), dist=razdalja, network_type="drive", simplify=True)
         
         try:
@@ -59,36 +54,37 @@ def ustvari_poster_cached(mesto, drzava, razdalja, ime_teme):
         ax.set_xlim(west, east)
         ax.axis('off')
         
+        # CENTRIRANJE IN NAPISI (Z DODANIMI KOORDINATAMI)
         plt.subplots_adjust(bottom=0.22)
         fig.text(0.5, 0.11, mesto.upper(), fontsize=32, color=barve["text"], ha="center", fontweight='bold')
         fig.text(0.5, 0.08, drzava.upper(), fontsize=14, color=barve["text"], ha="center", alpha=0.7)
         
+        # Izračun in formatiranje koordinat
+        koord_tekst = f"{abs(lat):.4f}° {'N' if lat>0 else 'S'} / {abs(lon):.4f}° {'E' if lon>0 else 'W'}"
+        fig.text(0.5, 0.05, koord_tekst, fontsize=10, color=barve["text"], ha="center", family="monospace", alpha=0.5)
+        
         buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=150, bbox_inches='tight', pad_inches=0.4) # DPI na 150 za stabilnost
+        fig.savefig(buf, format="png", dpi=200, bbox_inches='tight', pad_inches=0.4)
         buf.seek(0)
-        plt.close(fig) # Vedno zapremo figuro, da sprostimo RAM
+        plt.close(fig) # Sprostitev RAM-a
         return buf.getvalue()
     except Exception as e:
         return str(e)
 
-# 4. UI (Streamlit)
+# 3. UI
 st.title("🎨 MESTNA POEZIJA")
+mesto_vnos = st.sidebar.text_input("Mesto", "Ljubljana")
+drzava_vnos = st.sidebar.text_input("Država", "Slovenija")
+zoom_vnos = st.sidebar.slider("Zoom (metri)", 500, 10000, 2500)
+tema_vnos = st.sidebar.selectbox("Slog", list(TEME.keys()))
 
-col1, col2 = st.columns(2)
-with col1:
-    mesto_vnos = st.text_input("Mesto", "Piran")
-    drzava_vnos = st.text_input("Država", "Slovenija")
-with col2:
-    zoom_vnos = st.number_input("Mera zooma (metri)", 500, 10000, 2500, 500) # Omejen max zoom
-    tema_vnos = st.selectbox("Izberi slog", list(TEME.keys()))
-
-if st.button("✨ GENERIRAJ MOJSTROVINO"):
-    rezultat = ustvari_poster_cached(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
-    
+if st.sidebar.button("✨ GENERIRAJ"):
+    rezultat = ustvari_poster_final(mesto_vnos, drzava_vnos, zoom_vnos, tema_vnos)
     if isinstance(rezultat, bytes):
-        st.image(rezultat, use_container_width=True)
-        st.download_button("📥 PRENESI A4 POSTER", rezultat, file_name=f"{mesto_vnos}.png")
+        st.image(rezultat)
+        st.download_button("📥 PRENESI PNG", rezultat, file_name=f"{mesto_vnos}_poster.png")
     else:
         st.error(f"Napaka: {rezultat}")
 
-# ... (tvoj PayPal del ostane isti)
+# PAYPAL GUMB (Tvoj originalen HTML del)
+# ... [vstavi svoj HTML kodo za PayPal tukaj]
