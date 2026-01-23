@@ -86,7 +86,7 @@ def ustvari_poster(mesto, drzava, razdalja, ime_teme):
 
 # --- UI (Streamlit) ---
 st.set_page_config(page_title="Mestna Poezija Premium", page_icon="🎨")
-st.title("🎨 MESTNA POEZIJA PRO")
+st.title("🎨 MESTNA POEZIJA")
 
 col1, col2 = st.columns(2)
 with col1:
